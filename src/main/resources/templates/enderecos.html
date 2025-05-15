@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Meus Endereços</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        nav {
+            background-color: #333;
+            color: white;
+            padding: 1em;
+            text-align: center;
+        }
+        nav a {
+            color: white;
+            margin: 0 1em;
+            text-decoration: none;
+        }
+        .container {
+            width: 80%;
+            margin: auto;
+            overflow: hidden;
+            padding: 20px;
+            background-color: white;
+            margin-top: 20px;
+            border-radius: 8px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        #addressFormContainer {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .form-group {
+            margin-bottom: 10px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .form-group input[type='text'], .form-group input[type='number'] {
+            width: calc(100% - 22px);
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .form-group input[type='text']:read-only {
+            background-color: #e9e9e9;
+        }
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        .btn-info {
+            background-color: #17a2b8;
+            color: white;
+        }
+        #addressList {
+            list-style: none;
+            padding: 0;
+        }
+        #addressList li {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .error-message {
+            color: red;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/endereco">Endereços</a>
+        <a href="/logout">Sair</a>
+    </nav>
+
+    <div class="container">
+        <h1>Meus Endereços</h1>
+        
+        <button id="btnShowAddForm" class="btn btn-primary">Adicionar Novo Endereço</button>
+        
+        <div id="addressFormContainer" style="display:none;">
+            <h2 id="formTitle">Adicionar Endereço</h2>
+            <form id="addressForm">
+                <input type="hidden" id="addressId">
+                <div class="form-group">
+                    <label for="cep">CEP:</label>
+                    <input type="text" id="cep" name="cep" required>
+                    <button type="button" id="btnBuscarCep" class="btn btn-info">Buscar CEP</button>
+                    <p id="cepError" class="error-message"></p>
+                </div>
+                <div class="form-group">
+                    <label for="logradouro">Logradouro:</label>
+                    <input type="text" id="logradouro" name="logradouro" required readonly>
+                </div>
+                <div class="form-group">
+                    <label for="numero">Número:</label>
+                    <input type="text" id="numero" name="numero" required>
+                </div>
+                <div class="form-group">
+                    <label for="complemento">Complemento:</label>
+                    <input type="text" id="complemento" name="complemento">
+                </div>
+                <div class="form-group">
+                    <label for="bairro">Bairro:</label>
+                    <input type="text" id="bairro" name="bairro" required readonly>
+                </div>
+                <div class="form-group">
+                    <label for="cidade">Cidade:</label>
+                    <input type="text" id="cidade" name="cidade" required readonly>
+                </div>
+                <div class="form-group">
+                    <label for="estado">Estado (UF):</label>
+                    <input type="text" id="estado" name="estado" required readonly>
+                </div>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+                <button type="button" id="btnCancelForm" class="btn btn-secondary">Cancelar</button>
+            </form>
+        </div>
+
+        <h2>Lista de Endereços</h2>
+        <ul id="addressList">
+            <!-- Endereços serão carregados aqui -->
+            <p id="loadingMessage">Carregando endereços...</p>
+        </ul>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const apiUrl = '/api/addresses';
+            const viaCepUrl = 'https://viacep.com.br/ws/';
+
+            const addressList = document.getElementById('addressList');
+            const addressFormContainer = document.getElementById('addressFormContainer');
+            const addressForm = document.getElementById('addressForm');
+            const formTitle = document.getElementById('formTitle');
+            const loadingMessage = document.getElementById('loadingMessage');
+            
+            const btnShowAddForm = document.getElementById('btnShowAddForm');
+            const btnCancelForm = document.getElementById('btnCancelForm');
+            const btnBuscarCep = document.getElementById('btnBuscarCep');
+
+            const fields = {
+                id: document.getElementById('addressId'),
+                cep: document.getElementById('cep'),
+                logradouro: document.getElementById('logradouro'),
+                numero: document.getElementById('numero'),
+                complemento: document.getElementById('complemento'),
+                bairro: document.getElementById('bairro'),
+                cidade: document.getElementById('cidade'),
+                estado: document.getElementById('estado'),
+                cepError: document.getElementById('cepError')
+            };
+
+            function getAuthToken() {
+                return localStorage.getItem('token'); // Ou de onde quer que você armazene o token
+            }
+
+            async function fetchAddresses() {
+                loadingMessage.style.display = 'block';
+                addressList.innerHTML = ''; // Limpa a lista antes de adicionar novos itens
+                try {
+                    const response = await fetch(apiUrl, {
+                        headers: {
+                            'Authorization': `Bearer ${getAuthToken()}`
+                        }
+                    });
+                    if (!response.ok) {
+                        if (response.status === 401 || response.status === 403) {
+                           loadingMessage.textContent = 'Sessão expirada ou não autorizado. Faça login novamente.';
+                           // window.location.href = '/login'; // Opcional: redirecionar para login
+                           return;
+                        } 
+                        throw new Error(`Erro ao buscar endereços: ${response.statusText}`);
+                    }
+                    const page = await response.json();
+                    displayAddresses(page.content); // Acessa a lista de endereços dentro do objeto Page
+                } catch (error) {
+                    console.error('Erro ao buscar endereços:', error);
+                    loadingMessage.textContent = 'Falha ao carregar endereços.';
+                }
+            }
+
+            function displayAddresses(addresses) {
+                loadingMessage.style.display = 'none';
+                addressList.innerHTML = ''; // Limpa a lista também ao re-exibir, para o caso de atualizações
+                if (!addresses || addresses.length === 0) {
+                    const p = document.createElement('p');
+                    p.textContent = 'Nenhum endereço cadastrado.';
+                    addressList.appendChild(p);
+                    return;
+                }
+
+                addresses.forEach(addr => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <div>
+                            <strong>${addr.logradouro}, ${addr.numero}</strong><br>
+                            ${addr.complemento ? addr.complemento + '<br>' : ''}
+                            ${addr.bairro} - ${addr.cidade}/${addr.estado}<br>
+                            CEP: ${addr.cep}
+                        </div>
+                        <div>
+                            <button class="btn btn-secondary btn-sm btn-edit" data-id="${addr.id}">Editar</button>
+                            <button class="btn btn-danger btn-sm btn-delete" data-id="${addr.id}">Excluir</button>
+                        </div>
+                    `;
+                    addressList.appendChild(li);
+                });
+
+                document.querySelectorAll('.btn-edit').forEach(button => {
+                    button.addEventListener('click', handleEdit);
+                });
+                document.querySelectorAll('.btn-delete').forEach(button => {
+                    button.addEventListener('click', handleDelete);
+                });
+            }
+
+            btnShowAddForm.addEventListener('click', () => {
+                formTitle.textContent = 'Adicionar Novo Endereço';
+                addressForm.reset();
+                fields.id.value = '';
+                setAddressFieldsReadOnly(false, false); // CEP editável, outros não até buscar
+                addressFormContainer.style.display = 'block';
+                btnShowAddForm.style.display = 'none';
+            });
+
+            btnCancelForm.addEventListener('click', () => {
+                addressFormContainer.style.display = 'none';
+                btnShowAddForm.style.display = 'block';
+                addressForm.reset();
+                fields.cepError.textContent = '';
+            });
+
+            function setAddressFieldsReadOnly(isCepReadOnly, areOthersReadOnly) {
+                fields.cep.readOnly = isCepReadOnly;
+                fields.logradouro.readOnly = areOthersReadOnly;
+                fields.bairro.readOnly = areOthersReadOnly;
+                fields.cidade.readOnly = areOthersReadOnly;
+                fields.estado.readOnly = areOthersReadOnly;
+                 if(areOthersReadOnly) {
+                    fields.logradouro.value = '';
+                    fields.bairro.value = '';
+                    fields.cidade.value = '';
+                    fields.estado.value = '';
+                }
+            }
+
+            btnBuscarCep.addEventListener('click', async () => {
+                const cep = fields.cep.value.replace(/\D/g, ''); // Remove non-digits
+                fields.cepError.textContent = '';
+                if (cep.length !== 8) {
+                    fields.cepError.textContent = 'CEP inválido. Deve conter 8 dígitos.';
+                    setAddressFieldsReadOnly(false, true);
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${viaCepUrl}${cep}/json/`);
+                    if (!response.ok) {
+                        throw new Error('CEP não encontrado ou erro na API ViaCEP.');
+                    }
+                    const data = await response.json();
+                    if (data.erro) {
+                        fields.cepError.textContent = 'CEP não encontrado.';
+                        setAddressFieldsReadOnly(false, true);
+                        return;
+                    }
+                    fields.logradouro.value = data.logradouro || '';
+                    fields.bairro.value = data.bairro || '';
+                    fields.cidade.value = data.localidade || '';
+                    fields.estado.value = data.uf || '';
+                    setAddressFieldsReadOnly(true, false); // CEP não editável, outros sim
+                    fields.numero.focus(); // Foco no número após preencher
+                } catch (error) {
+                    console.error('Erro ao buscar CEP:', error);
+                    fields.cepError.textContent = error.message || 'Erro ao buscar CEP.';
+                    setAddressFieldsReadOnly(false, true);
+                }
+            });
+
+            addressForm.addEventListener('submit', async function(event) {
+                event.preventDefault();
+                const addressData = {
+                    cep: fields.cep.value,
+                    logradouro: fields.logradouro.value,
+                    numero: fields.numero.value,
+                    complemento: fields.complemento.value,
+                    bairro: fields.bairro.value,
+                    cidade: fields.cidade.value,
+                    estado: fields.estado.value
+                };
+
+                const addressId = fields.id.value;
+                const method = addressId ? 'PUT' : 'POST';
+                const url = addressId ? `${apiUrl}/${addressId}` : apiUrl;
+
+                try {
+                    const response = await fetch(url, {
+                        method: method,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${getAuthToken()}`
+                        },
+                        body: JSON.stringify(addressData)
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || `Erro ao salvar endereço: ${response.statusText}`);
+                    }
+                    fetchAddresses(); // Recarrega a lista
+                    btnCancelForm.click(); // Esconde o formulário
+                } catch (error) {
+                    console.error('Erro ao salvar endereço:', error);
+                    alert(`Falha ao salvar endereço: ${error.message}`);
+                }
+            });
+
+            async function handleEdit(event) {
+                const id = event.target.dataset.id;
+                try {
+                     const response = await fetch(`${apiUrl}/${id}`, {
+                        headers: {
+                            'Authorization': `Bearer ${getAuthToken()}`
+                        }
+                    });
+                    if (!response.ok) throw new Error('Endereço não encontrado ou erro ao buscar.');
+                    const addr = await response.json();
+
+                    formTitle.textContent = 'Editar Endereço';
+                    fields.id.value = addr.id;
+                    fields.cep.value = addr.cep;
+                    fields.logradouro.value = addr.logradouro;
+                    fields.numero.value = addr.numero;
+                    fields.complemento.value = addr.complemento || '';
+                    fields.bairro.value = addr.bairro;
+                    fields.cidade.value = addr.cidade;
+                    fields.estado.value = addr.estado;
+                    
+                    setAddressFieldsReadOnly(true, false); // CEP não editável, outros sim
+                    addressFormContainer.style.display = 'block';
+                    btnShowAddForm.style.display = 'none';
+                } catch (error) {
+                    console.error('Erro ao carregar endereço para edição:', error);
+                    alert('Falha ao carregar endereço para edição.');
+                }
+            }
+
+            async function handleDelete(event) {
+                const id = event.target.dataset.id;
+                if (confirm('Tem certeza que deseja excluir este endereço?')) {
+                    try {
+                        const response = await fetch(`${apiUrl}/${id}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Authorization': `Bearer ${getAuthToken()}`
+                            }
+                        });
+                        if (!response.ok) {
+                             const errorData = await response.json();
+                             throw new Error(errorData.message || `Erro ao excluir: ${response.statusText}`);
+                        }
+                        fetchAddresses(); // Recarrega a lista
+                    } catch (error) {
+                        console.error('Erro ao excluir endereço:', error);
+                        alert(`Falha ao excluir endereço: ${error.message}`);
+                    }
+                }
+            }
+
+            // Carregar endereços ao iniciar
+            if (getAuthToken()) {
+                 fetchAddresses();
+            } else {
+                loadingMessage.textContent = 'Você precisa estar logado para ver seus endereços.';
+                 // Opcional: redirecionar para login se não houver token
+                 // window.location.href = '/login';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html
+	xmlns:th="http://www.thymeleaf.org"
+	xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+	<head>
+		<title>Dashboard</title>
+		<link
+			href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
+			rel="stylesheet" />
+		<meta
+			name="_csrf"
+			th:content="${_csrf.token}" />
+		<meta
+			name="_csrf_header"
+			th:content="${_csrf.headerName}" />
+	</head>
+	<body>
+		<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+			<div class="container">
+				<a
+					class="navbar-brand"
+					href="#"
+					>Sistema de Usuários</a
+				>
+				<button
+					class="navbar-toggler"
+					type="button"
+					data-bs-toggle="collapse"
+					data-bs-target="#navbarNav">
+					<span class="navbar-toggler-icon"></span>
+				</button>
+				<div
+					class="collapse navbar-collapse"
+					id="navbarNav">
+					<ul class="navbar-nav me-auto">
+						<li class="nav-item">
+							<a
+								class="nav-link active"
+								href="#"
+								data-bs-toggle="tab"
+								data-bs-target="#profile"
+								>Perfil</a
+							>
+						</li>
+						<li class="nav-item">
+							<a class="nav-link" href="/endereco">Endereços</a>
+						</li>
+					</ul>
+					<span
+						class="navbar-text me-3"
+						th:text="${user.name}">
+						Nome do Usuário
+					</span>
+					<form
+						th:action="@{/logout}"
+						method="post"
+						class="d-inline">
+						<button
+							type="submit"
+							class="btn btn-outline-light">
+							Sair
+						</button>
+					</form>
+				</div>
+			</div>
+		</nav>
+
+		<div class="container mt-4">
+			<div class="tab-content">
+				<!-- Perfil -->
+				<div
+					class="tab-pane fade show active"
+					id="profile">
+					<h2>Meu Perfil</h2>
+					<div
+						id="updateSuccess"
+						class="alert alert-success d-none"
+						role="alert">
+						Perfil atualizado com sucesso!
+					</div>
+					<div
+						id="updateError"
+						class="alert alert-danger d-none"
+						role="alert">
+						Erro ao atualizar perfil.
+					</div>
+					<form
+						id="profileForm"
+						class="mt-3"
+						th:object="${user}">
+						<div class="mb-3">
+							<label
+								for="profileName"
+								class="form-label"
+								>Nome</label
+							>
+							<input
+								type="text"
+								class="form-control"
+								id="profileName"
+								th:field="*{name}"
+								required />
+						</div>
+						<div class="mb-3">
+							<label
+								for="profileEmail"
+								class="form-label"
+								>Email</label
+							>
+							<input
+								type="email"
+								class="form-control"
+								id="profileEmail"
+								th:field="*{email}"
+								readonly />
+						</div>
+						<button
+							type="submit"
+							class="btn btn-primary">
+							Atualizar Perfil
+						</button>
+					</form>
+				</div>
+
+				<!-- Endereços -->
+				<div
+					class="tab-pane fade"
+					id="addresses">
+					<div class="d-flex justify-content-between align-items-center mb-3">
+						<h2>Meus Endereços</h2>
+						<button
+							class="btn btn-primary"
+							data-bs-toggle="modal"
+							data-bs-target="#addressModal">
+							Novo Endereço
+						</button>
+					</div>
+					<div id="addressesList"></div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Modal de Endereço -->
+		<div
+			class="modal fade"
+			id="addressModal"
+			tabindex="-1">
+			<div class="modal-dialog">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title">Novo Endereço</h5>
+						<button
+							type="button"
+							class="btn-close"
+							data-bs-dismiss="modal"></button>
+					</div>
+					<div class="modal-body">
+						<form id="addressForm">
+							<div class="mb-3">
+								<label
+									for="cep"
+									class="form-label"
+									>CEP</label
+								>
+								<input
+									type="text"
+									class="form-control"
+									id="cep" />
+							</div>
+							<div class="mb-3">
+								<label
+									for="logradouro"
+									class="form-label"
+									>Logradouro</label
+								>
+								<input
+									type="text"
+									class="form-control"
+									id="logradouro" />
+							</div>
+							<div class="mb-3">
+								<label
+									for="numero"
+									class="form-label"
+									>Número</label
+								>
+								<input
+									type="text"
+									class="form-control"
+									id="numero" />
+							</div>
+							<div class="mb-3">
+								<label
+									for="complemento"
+									class="form-label"
+									>Complemento</label
+								>
+								<input
+									type="text"
+									class="form-control"
+									id="complemento" />
+							</div>
+							<div class="mb-3">
+								<label
+									for="bairro"
+									class="form-label"
+									>Bairro</label
+								>
+								<input
+									type="text"
+									class="form-control"
+									id="bairro" />
+							</div>
+							<div class="mb-3">
+								<label
+									for="cidade"
+									class="form-label"
+									>Cidade</label
+								>
+								<input
+									type="text"
+									class="form-control"
+									id="cidade" />
+							</div>
+							<div class="mb-3">
+								<label
+									for="estado"
+									class="form-label"
+									>Estado</label
+								>
+								<input
+									type="text"
+									class="form-control"
+									id="estado" />
+							</div>
+						</form>
+					</div>
+					<div class="modal-footer">
+						<button
+							type="button"
+							class="btn btn-secondary"
+							data-bs-dismiss="modal">
+							Cancelar
+						</button>
+						<button
+							type="button"
+							class="btn btn-primary"
+							onclick="saveAddress()">
+							Salvar
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+		<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+		<script th:inline="javascript">
+			$(document).ready(function () {
+				const token = $("meta[name='_csrf']").attr("content");
+				const header = $("meta[name='_csrf_header']").attr("content");
+
+				$.ajaxSetup({
+					beforeSend: function (xhr) {
+						xhr.setRequestHeader(header, token);
+					},
+				});
+
+				$("#profileForm").on("submit", function (e) {
+					e.preventDefault();
+
+					const userData = {
+						name: $("#profileName").val(),
+					};
+
+					$.ajax({
+						url: "/api/profile/update",
+						type: "POST",
+						contentType: "application/json",
+						data: JSON.stringify(userData),
+						success: function (response) {
+							$("#updateSuccess").removeClass("d-none");
+							$("#updateError").addClass("d-none");
+							$(".navbar-text").text(userData.name);
+							setTimeout(() => {
+								$("#updateSuccess").addClass("d-none");
+							}, 3000);
+						},
+						error: function (xhr) {
+							$("#updateError")
+								.removeClass("d-none")
+								.text(xhr.responseJSON?.message || "Erro ao atualizar perfil.");
+							setTimeout(() => {
+								$("#updateError").addClass("d-none");
+							}, 3000);
+						},
+					});
+				});
+			});
+		</script>
+	</body>
+</html>
